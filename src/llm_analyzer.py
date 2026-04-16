@@ -1,8 +1,8 @@
 """
 llm_analyzer.py
 ---------------
-Wrapper untuk Gemini API sebagai smart contract auditor.
-Input: source code contract Solidity (string)
+Wrapper for Gemini API as a smart contract auditor.
+Input: Solidity contract source code (string)
 Output: list of clean findings (dict)
 """
 
@@ -14,12 +14,9 @@ from google.genai import errors
 from typing import List, Dict
 
 
-# TODO 1: Load API key & configure Gemini
-# Hint:
-#   - load_dotenv() untuk load file .env
-#   - Ambil key: os.getenv("GEMINI_API_KEY")
-#   - Validate: kalau None, raise ValueError("GEMINI_API_KEY not set")
-#   - Configure: genai.configure(api_key=...)
+# Load API key and configure Gemini client.
+# load_dotenv() loads variables from .env file.
+# Validate that the key exists before creating client.
 load_dotenv()
 api_key = os.getenv("GOOGLE_API_KEY")
 if not api_key:
@@ -27,17 +24,8 @@ if not api_key:
 else:
     client = genai.Client(api_key=api_key)
 
-# TODO 2: Define system prompt (taruh sebagai constant di atas function)
-# Hint:
-#   - String multi-line pake triple quotes """..."""
-#   - Instruct Gemini:
-#       - Role: smart contract security auditor
-#       - Task: find vulnerabilities
-#       - Output format: JSON array dengan field: check, impact, confidence, description, lines
-#       - impact values: "High", "Medium", "Low", "Informational"
-#       - confidence values: "High", "Medium", "Low"
-#   - Sample akhir prompt:
-#       "Output ONLY valid JSON array. No markdown, no explanation, no code fences."
+# System prompt for Gemini: instructs it to act as a security auditor
+# and return findings in structured JSON format.
 SYSTEM_PROMPT = """You are a smart contract security auditor. Analyze the Solidity contract below and identify security vulnerabilities.
 
 For each finding, return a JSON object with:
@@ -61,27 +49,21 @@ Output format example:
 
 def run_llm_audit(contract_code: str) -> List[Dict]:
     """
-    Audit Solidity contract pakai Gemini LLM.
+    Audit a Solidity contract using Gemini LLM.
     
     Args:
-        contract_code: source code contract sebagai string
+        contract_code: Solidity contract source code as a string.
     
     Returns:
-        List of finding dict dengan keys: check, impact, confidence, description, lines
-        Return [] kalau API gagal atau response invalid.
+        List of finding dicts with keys: check, impact, confidence, description, lines.
+        Returns an empty list [] if the API fails or the response is invalid.
     """
     
-    # TODO 3: Build full prompt (system prompt + contract code)
-    # Hint:
-    #   - f-string: full_prompt = f"{SYSTEM_PROMPT}\n\nContract:\n{contract_code}"
+    # Build the full prompt by combining the system prompt with the contract code.
     full_prompt = f"{SYSTEM_PROMPT}\n\nContract:\n{contract_code}"
     
-    # TODO 4: Call Gemini API
-    # Hint:
-    #   - model = genai.GenerativeModel("gemini-2.0-flash-exp")  # atau "gemini-2.5-flash"
-    #   - Wrap dalam try/except biar kalau API error, return []
-    #   - response = model.generate_content(full_prompt)
-    #   - Raw output: response.text
+    # Call the Gemini API to generate the audit response.
+    # Catch any API errors and return an empty list if the call fails.
     try:
         response = client.models.generate_content(
             model="gemini-2.5-flash-lite",
@@ -95,11 +77,8 @@ def run_llm_audit(contract_code: str) -> List[Dict]:
     if response_text is None:
         return []
     
-    # TODO 5: Clean response text
-    # Hint:
-    #   - Gemini kadang masih return pake markdown fence: ```json ... ```
-    #   - Strip: response_text.strip().removeprefix("```json").removesuffix("```").strip()
-    #   - Atau pake regex/replace
+    # Remove markdown code fences from the response (e.g., ```json ... ```).
+    # Gemini may wrap JSON output in code fences; we strip them here.
     cleaned = response_text.strip()
     if cleaned.startswith("```json"):
         cleaned = cleaned.removeprefix("```json").strip()
@@ -108,11 +87,8 @@ def run_llm_audit(contract_code: str) -> List[Dict]:
     if cleaned.endswith("```"):
         cleaned = cleaned.removesuffix("```").strip()
     
-    # TODO 6: Parse JSON
-    # Hint:
-    #   - try/except json.JSONDecodeError, return [] kalau gagal
-    #   - data = json.loads(cleaned_text)
-    #   - Validate: kalau bukan list, return []
+    # Parse the cleaned JSON response.
+    # Catch JSON decode errors and validate that the result is a list.
     try:
         data = json.loads(cleaned)
     except json.JSONDecodeError as e:
@@ -120,11 +96,8 @@ def run_llm_audit(contract_code: str) -> List[Dict]:
         print(f"Raw response: {cleaned[:200]}...")
         return [] 
      
-    # TODO 7: Validate & clean setiap finding
-    # Hint:
-    #   - Loop, pastikan setiap finding punya key yang dibutuhkan
-    #   - Skip finding yang incomplete
-    #   - Bikin findings list bersih
+    # Validate each finding and extract only the required fields.
+    # Skip any findings that are incomplete or malformed.
     
     if not isinstance(data, list):
         return []
@@ -138,24 +111,20 @@ def run_llm_audit(contract_code: str) -> List[Dict]:
         if not required_keys.issubset(item.keys()):
             continue
         
-    findings.append({
-        "check": item["check"],
-        "impact": item["impact"],
-        "confidence": item["confidence"],
-        "description": item["description"],
-        "lines": item["lines"] if isinstance(item["lines"], list) else []
-    })
+        findings.append({
+            "check": item["check"],
+            "impact": item["impact"],
+            "confidence": item["confidence"],
+            "description": item["description"],
+            "lines": item["lines"] if isinstance(item["lines"], list) else []
+        })
     
-    # TODO 8: Return findings
+    # Return the validated findings list.
     return findings
 
 
-# TODO 9: Testing block
-# Hint:
-#   - if __name__ == "__main__":
-#   - Baca file VulnerableBank.sol: open(path).read()
-#   - Panggil run_llm_audit()
-#   - Print hasil dengan format sama kayak static_analyzer.py
+# Test block: reads a Solidity contract file and runs the audit.
+# Prints results in a human-readable format.
 
 if __name__ == "__main__":
     contract_path = "test_samples/simple/VulnerableBank.sol"
