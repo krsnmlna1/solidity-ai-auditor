@@ -66,15 +66,12 @@ def run_llm_audit(contract_code: str) -> List[Dict]:
     # Catch any API errors and return an empty list if the call fails.
     try:
         response = client.models.generate_content(
-            model="gemini-2.5-flash-lite",
+            model="gemini-1.5-flash",
             contents=full_prompt
-            )
+        )
+        response_text = response.text
     except errors.ClientError as exc:
         print(f"Gemini API error: {exc}")
-        return []
-    
-    response_text = response.text
-    if response_text is None:
         return []
     
     # Remove markdown code fences from the response (e.g., ```json ... ```).
