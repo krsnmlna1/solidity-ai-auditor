@@ -9,6 +9,7 @@ Output: dict containing metadata + combined findings
 from typing import List, Dict
 from static_analyzer import run_slither
 from llm_analyzer import run_llm_audit
+from formatter import save_json_report, save_markdown_report
 
 
 def audit_contract(contract_path: str) -> Dict:
@@ -113,3 +114,10 @@ if __name__ == "__main__":
         print(f"    Lines: {finding['lines']}")
         print(f"    Description: {finding['description'][:150]}...")
         print()
+        
+    json_path = save_json_report(report)
+    md_path = save_markdown_report(report)
+    
+    print(f"\nReports saved:")
+    print(f"  JSON: {json_path}")
+    print(f"  Markdown: {md_path}")

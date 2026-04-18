@@ -37,6 +37,8 @@ For each finding, return a JSON object with:
 
 Rules:
 - Focus on real security issues, not style preferences
+- Keep each description under 100 words
+- Do NOT use special characters, newlines, or quotes inside JSON string values
 - If no vulnerabilities found, return empty array: []
 - Do NOT include markdown code fences in your output
 - Do NOT include any explanation before or after the JSON
@@ -66,7 +68,7 @@ def run_llm_audit(contract_code: str) -> List[Dict]:
     # Catch any API errors and return an empty list if the call fails.
     try:
         response = client.models.generate_content(
-            model="gemini-1.5-flash",
+            model="gemini-2.5-flash-lite",
             contents=full_prompt
         )
         response_text = response.text
@@ -83,6 +85,11 @@ def run_llm_audit(contract_code: str) -> List[Dict]:
         cleaned = cleaned.removeprefix("```").strip()
     if cleaned.endswith("```"):
         cleaned = cleaned.removesuffix("```").strip()
+
+    # Fallback cleanup for common malformed JSON patterns in LLM output.
+    cleaned = cleaned.replace("\n", " ")   # remove literal newlines
+    cleaned = cleaned.replace("\\n", " ")  # remove escaped newlines
+    cleaned = cleaned.replace("\t", " ")   # remove tabs
     
     # Parse the cleaned JSON response.
     # Catch JSON decode errors and validate that the result is a list.
