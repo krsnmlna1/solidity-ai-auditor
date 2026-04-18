@@ -97,7 +97,14 @@ def audit_contract(contract_path: str) -> Dict:
 #   - Add print finding["source"] so the source is visible
 
 if __name__ == "__main__":
-    contract = "test_samples/simple/VulnerableBank.sol"
+    import sys
+    
+    if len(sys.argv) < 2:
+        print("Usage: py src/auditor.py <path_to_contract.sol>")
+        print("Example: py src/auditor.py test_samples/simple/VulnerableBank.sol")
+        sys.exit(1)
+    
+    contract = sys.argv[1]
     
     print(f"Running full audit on {contract}...\n")
     
@@ -114,7 +121,8 @@ if __name__ == "__main__":
         print(f"    Lines: {finding['lines']}")
         print(f"    Description: {finding['description'][:150]}...")
         print()
-        
+    
+    # Save reports
     json_path = save_json_report(report)
     md_path = save_markdown_report(report)
     
